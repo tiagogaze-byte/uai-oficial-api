@@ -1,7 +1,10 @@
 import { Pool } from 'pg';
 
-// Remove qualquer parâmetro de SSL da URL para evitar conflito
-const connectionString = process.env.DATABASE_URL?.replace(/[?&]sslmode=[^&]*/g, '').replace(/[?&]ssl=[^&]*/g, '');
+const connectionString = process.env.DATABASE_URL
+  ?.replace(/[?&]sslmode=[^&]*/g, '')
+  .replace(/[?&]channel_binding=[^&]*/g, '')
+  .replace(/&&/g, '&')
+  .replace(/\?&/g, '?');
 
 const pool = new Pool({
   connectionString,
@@ -11,7 +14,7 @@ const pool = new Pool({
 
 export default async function handler(req, res) {
 
-  // ── 1. HANDSHAKE DA META (GET) ──────────────────────────────────────────────
+  // ── 1. HANDSHAKE DA META (GET) ─────────────────────────────────────────────
   if (req.method === 'GET') {
     const mode      = req.query['hub.mode'];
     const token     = req.query['hub.verify_token'];
@@ -32,22 +35,17 @@ export default async function handler(req, res) {
       return res.status(200).end();
     }
 
-    // Responde 200 IMEDIATAMENTE para a Meta não reenviar
-    res.status(200).json({ status: 'received' });
+    // Processa ANTES de responder — evita que Vercel mate a função cedo
+    await processMessage(body);
 
-    // Processamento assíncrono
-    processMessage(body).catch(err =>
-      console.error('[WEBHOOK] Erro no processamento:', err.message, err.stack)
-    );
-
-    return;
+    return res.status(200).json({ status: 'received' });
   }
 
   res.setHeader('Allow', ['GET', 'POST']);
   res.status(405).end();
 }
 
-// ── PROCESSAMENTO PRINCIPAL ──────────────────────────────────────────────────
+// ── PROCESSAMENTO PRINCIPAL ────────────────────────────────────────────────
 async function processMessage(body) {
   const entry   = body.entry?.[0];
   const change  = entry?.changes?.[0]?.value;
@@ -64,13 +62,12 @@ async function processMessage(body) {
   const name          = contact.profile?.name || 'Sem nome';
   const textBody      = message.text?.body || '';
 
-  console.log(`[WEBHOOK] Mensagem de ${name} (${wa_id}) via instância ${phoneNumberId}: "${textBody}"`);
-  console.log(`[WEBHOOK] Conectando ao banco...`);
+  console.log(`[WEBHOOK] De: ${name} (${wa_id}) | Instância: ${phoneNumberId} | Msg: "${textBody}"`);
 
   let client;
   try {
     client = await pool.connect();
-    console.log(`[WEBHOOK] Conexão OK. Buscando instância ${phoneNumberId}...`);
+    console.log('[WEBHOOK] Banco conectado.');
 
     // 1. Busca instância pelo phone_number_id
     const instanceRes = await client.query(
@@ -79,16 +76,13 @@ async function processMessage(body) {
     );
 
     if (instanceRes.rows.length === 0) {
-      console.warn(`[WEBHOOK] ⚠️ Instância não encontrada para phone_number_id: ${phoneNumberId}`);
-      // Lista todas as instâncias para debug
-      const allInstances = await client.query(`SELECT id, phone_number_id, label FROM whatsapp_instances`);
-      console.log(`[WEBHOOK] Instâncias no banco:`, JSON.stringify(allInstances.rows));
+      console.warn(`[WEBHOOK] ⚠️ Instância não encontrada: ${phoneNumberId}`);
+      const all = await client.query(`SELECT phone_number_id FROM whatsapp_instances`);
+      console.log('[WEBHOOK] Instâncias no banco:', JSON.stringify(all.rows));
       return;
     }
 
-    const instanceId = instanceRes.rows[0].id;
-    const tenantId   = instanceRes.rows[0].tenant_id;
-    console.log(`[WEBHOOK] Instância encontrada: ${instanceId} | Tenant: ${tenantId}`);
+    const { id: instanceId, tenant_id: tenantId } = instanceRes.rows[0];
 
     // 2. Upsert no Lead
     const leadRes = await client.query(
@@ -99,7 +93,6 @@ async function processMessage(body) {
       [wa_id, name, tenantId]
     );
     const leadId = leadRes.rows[0].id;
-    console.log(`[WEBHOOK] Lead upsert OK: ${leadId}`);
 
     // 3. Grava a mensagem
     await client.query(
@@ -108,11 +101,10 @@ async function processMessage(body) {
       [leadId, textBody, instanceId, JSON.stringify(body)]
     );
 
-    console.log(`[WEBHOOK] ✓ Mensagem salva — Lead: ${leadId} | Tenant: ${tenantId}`);
+    console.log(`[WEBHOOK] ✓ Salvo — Lead: ${leadId} | Tenant: ${tenantId}`);
 
   } catch (err) {
-    console.error('[WEBHOOK] ERRO BANCO:', err.message);
-    console.error('[WEBHOOK] STACK:', err.stack);
+    console.error('[WEBHOOK] ERRO:', err.message);
   } finally {
     if (client) client.release();
   }
