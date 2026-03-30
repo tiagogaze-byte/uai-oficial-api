@@ -9,28 +9,24 @@
 <body class="bg-gray-900 text-gray-100 font-sans">
     <div class="container mx-auto px-4 py-10">
         <header class="flex justify-between items-center mb-10 border-b border-gray-800 pb-5">
-            <h1 class="text-3xl font-bold text-green-400">UAI Oficial <span class="text-white text-sm font-light">| Dashboard v1.0</span></h1>
+            <h1 class="text-3xl font-bold text-green-400">UAI Oficial <span class="text-white text-sm font-light">| Dashboard</span></h1>
             <div class="bg-gray-800 px-4 py-2 rounded-full text-xs font-mono">Status: <span class="text-green-500 underline">ONLINE</span></div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
                 <p class="text-gray-400 text-sm uppercase font-semibold">Total de Leads</p>
-                <p id="totalLeads" class="text-5xl font-black mt-2">--</p>
+                <p id="totalLeads" class="text-5xl font-black mt-2">0</p>
             </div>
             <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                <p class="text-gray-400 text-sm uppercase font-semibold">Mensagens Recebidas</p>
-                <p id="totalMessages" class="text-5xl font-black mt-2 text-blue-400">--</p>
-            </div>
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl border-green-900/30">
-                <p class="text-gray-400 text-sm uppercase font-semibold">Custo Operacional</p>
-                <p class="text-5xl font-black mt-2 text-green-500">R$ 0,00</p>
+                <p class="text-gray-400 text-sm uppercase font-semibold">Mensagens</p>
+                <p id="totalMessages" class="text-5xl font-black mt-2 text-blue-400">0</p>
             </div>
         </div>
 
         <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
             <div class="px-6 py-4 border-b border-gray-700 bg-gray-750">
-                <h2 class="font-bold text-lg">Últimas Interações (WhatsApp)</h2>
+                <h2 class="font-bold text-lg">Últimas Interações</h2>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
@@ -42,9 +38,7 @@
                         </tr>
                     </thead>
                     <tbody id="messageList">
-                        <tr>
-                            <td colspan="3" class="px-6 py-10 text-center text-gray-500 italic font-mono">Conectando ao banco Neon...</td>
-                        </tr>
+                        <tr><td colspan="3" class="px-6 py-10 text-center text-gray-500 font-mono italic">Aguardando dados...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -54,27 +48,29 @@
     <script>
         async function loadDashboard() {
             try {
-                // Aqui vamos chamar a API de listagem que o Lilo vai gerar
-                const res = await fetch('/api/dashboard'); 
+                const res = await fetch('/api/dashboard');
                 const data = await res.json();
                 
-        document.getElementById('totalLeads').innerText = Number(data.totalLeads);
-        document.getElementById('totalMessages').innerText = Number(data.totalMessages);
+                // O truque para converter o texto da API em número real
+                document.getElementById('totalLeads').innerText = data.totalLeads || 0;
+                document.getElementById('totalMessages').innerText = data.totalMessages || 0;
                 
                 const list = document.getElementById('messageList');
-                list.innerHTML = data.recentMessages.map(m => `
-                    <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 transition">
-                        <td class="px-6 py-4 font-medium text-green-400">${m.nome_eleitor}</td>
-                        <td class="px-6 py-4 text-gray-300 italic">"${m.mensagem}"</td>
-                        <td class="px-6 py-4 text-sm text-gray-500 font-mono">${new Date(m.horario).toLocaleString('pt-BR')}</td>
-                    </tr>
-                `).join('');
+                if (data.recentMessages && data.recentMessages.length > 0) {
+                    list.innerHTML = data.recentMessages.map(m => `
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 transition">
+                            <td class="px-6 py-4 font-medium text-green-400">${m.nome_eleitor}</td>
+                            <td class="px-6 py-4 text-gray-300">"${m.mensagem}"</td>
+                            <td class="px-6 py-4 text-sm text-gray-500 font-mono">${new Date(m.horario).toLocaleString('pt-BR')}</td>
+                        </tr>
+                    `).join('');
+                }
             } catch (err) {
-                console.error("Erro ao carregar dashboard:", err);
+                console.error("Erro ao carregar:", err);
             }
         }
-        setInterval(loadDashboard, 5000); // Atualiza sozinho a cada 5 segundos
         loadDashboard();
+        setInterval(loadDashboard, 10000); // Atualiza a cada 10 segundos
     </script>
 </body>
 </html>
