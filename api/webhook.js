@@ -1,85 +1,64 @@
-/**
- * WhatsApp Webhook - Vercel Serverless Function com Banco de Dados Neon
- * 
- * Este arquivo deve ser salvo em: /api/webhook.js
- * Certifique-se de instalar a biblioteca: npm install pg
- */
-
 import { Pool } from 'pg';
 
-// Configuração do Banco de Dados Neon
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Necessário para conexões seguras com o Neon
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
 export default async function handler(req, res) {
-  // 1. Validação do Webhook (GET) - Token da Meta
   if (req.method === 'GET') {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    if (mode && token) {
-      if (mode === 'subscribe' && token === process.env.VERIFY_TOKEN) {
-        console.log('WEBHOOK_VERIFIED');
-        return res.status(200).send(challenge);
-      } else {
-        return res.status(403).end();
-      }
+    if (mode === 'subscribe' && token === process.env.VERIFY_TOKEN) {
+      return res.status(200).send(challenge);
     }
+    return res.status(403).end();
   }
 
-  // 2. Recebimento de Mensagens (POST) - WhatsApp Cloud API
   if (req.method === 'POST') {
     const body = req.body;
 
     if (body.object === 'whatsapp_business_account') {
       try {
-        if (
-          body.entry &&
-          body.entry[0].changes &&
-          body.entry[0].changes[0].value.messages &&
-          body.entry[0].changes[0].value.messages[0]
-        ) {
-          const message = body.entry[0].changes[0].value.messages[0];
-          const contact = body.entry[0].changes[0].value.contacts[0];
+        const entry = body.entry?.[0];
+        const change = entry?.changes?.[0]?.value;
+        const message = change?.messages?.[0];
+        const contact = change?.contacts?.[0];
 
-          // Extração dos dados
-          const wa_id = contact.wa_id;       // Número do remetente
-          const name = contact.profile.name; // Nome do perfil
-          const textBody = message.text ? message.text.body : ''; // Texto da mensagem
-          
-          // Tenant ID fixo para o teste inicial (conforme solicitado)
-          const FIXED_TENANT_ID = 'tenant_teste_001';
+        if (message && contact) {
+          const wa_id = contact.wa_id;
+          const name = contact.profile.name;
+          const textBody = message.text?.body || '';
 
-          console.log(`Nova mensagem de ${name} (${wa_id}): ${textBody}`);
-
-          // LÓGICA DE INSERÇÃO NO BANCO DE DADOS NEON
-          const query = `
-            INSERT INTO messages (wa_id, contact_name, message_body, tenant_id, created_at)
-            VALUES ($1, $2, $3, $4, NOW())
+          // 1. Registrar o Lead (ou atualizar se já existir)
+          // Usamos um ID fixo de tenant para este teste inicial
+          const upsertLead = `
+            INSERT INTO leads (phone_number, name, tenant_id)
+            VALUES ($1, $2, (SELECT id FROM tenants LIMIT 1))
+            ON CONFLICT (tenant_id, phone_number) DO UPDATE SET name = $2
+            RETURNING id;
           `;
-          const values = [wa_id, name, textBody, FIXED_TENANT_ID];
+          
+          const leadRes = await pool.query(upsertLead, [wa_id, name]);
+          const leadId = leadRes.rows[0].id;
 
-          await pool.query(query, values);
-          console.log('Mensagem salva com sucesso no banco Neon!');
-
-          return res.status(200).json({ status: 'success' });
+          // 2. Salvar a Mensagem no Log do Claudinho
+          const insertMsg = `
+            INSERT INTO messages_log (lead_id, content, direction, instance_id)
+            VALUES ($1, $2, 'inbound', (SELECT id FROM whatsapp_instances LIMIT 1));
+          `;
+          
+          await pool.query(insertMsg, [leadId, textBody]);
+          console.log(`Sucesso! Mensagem de ${name} salva.`);
         }
+        return res.status(200).json({ status: 'success' });
       } catch (error) {
-        console.error('Erro ao processar ou salvar mensagem:', error);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Erro no banco:', error);
+        return res.status(200).end(); // Respondemos 200 para a Meta não ficar tentando de novo
       }
-      
-      return res.status(200).end();
-    } else {
-      return res.status(404).end();
     }
   }
-
-  res.setHeader('Allow', ['GET', 'POST']);
-  res.status(405).end(`Method ${req.method} Not Allowed`);
+  res.status(405).end();
 }
