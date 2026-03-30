@@ -58,8 +58,8 @@
                 const res = await fetch('/api/dashboard'); 
                 const data = await res.json();
                 
-                document.getElementById('totalLeads').innerText = data.totalLeads;
-                document.getElementById('totalMessages').innerText = data.totalMessages;
+        document.getElementById('totalLeads').innerText = Number(data.totalLeads);
+        document.getElementById('totalMessages').innerText = Number(data.totalMessages);
                 
                 const list = document.getElementById('messageList');
                 list.innerHTML = data.recentMessages.map(m => `
