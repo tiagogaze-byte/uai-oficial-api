@@ -119,8 +119,9 @@
       border-radius: 12px;
       padding: 1.5rem;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       transition: border-color 0.2s;
+      min-height: 110px;
     }
 
     .metric-card:hover { border-color: var(--green-dim); }
@@ -132,6 +133,7 @@
       width: 60px; height: 60px;
       background: radial-gradient(circle, var(--green-dim) 0%, transparent 70%);
       border-radius: 0 12px 0 0;
+      pointer-events: none;
     }
 
     .metric-label {
@@ -144,11 +146,12 @@
     }
 
     .metric-value {
-      font-size: 3rem;
+      font-size: 3.5rem;
       font-weight: 800;
-      line-height: 1;
+      line-height: 1.1;
       color: var(--text);
-      transition: all 0.4s;
+      display: block;
+      min-height: 3.5rem;
     }
 
     .metric-value.blue  { color: var(--blue); }
@@ -338,11 +341,11 @@
     <div class="metrics">
       <div class="metric-card">
         <div class="metric-label">Total de Leads</div>
-        <div class="metric-value green" id="totalLeads">—</div>
+        <span class="metric-value green" id="totalLeads">0</span>
       </div>
       <div class="metric-card">
         <div class="metric-label">Mensagens Recebidas</div>
-        <div class="metric-value blue" id="totalMessages">—</div>
+        <span class="metric-value blue" id="totalMessages">0</span>
       </div>
     </div>
 
@@ -386,6 +389,7 @@
         const res  = await fetch('/api/dashboard');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        console.log('[DEBUG] Dados recebidos:', JSON.stringify(data));
 
         // Métricas principais
         document.getElementById('totalLeads').textContent    = data.totalLeads    ?? 0;
