@@ -1,76 +1,446 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel UAI Oficial | Leads Políticos</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UAI Oficial | Painel de Controle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #0a0f0d;
+      --surface:   #111812;
+      --border:    #1e2b22;
+      --green:     #00e676;
+      --green-dim: #1a3d28;
+      --blue:      #40c4ff;
+      --text:      #e8f5e9;
+      --muted:     #4a6353;
+      --danger:    #ff5252;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.5;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+
+    .logo h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: -0.5px;
+    }
+
+    .logo span {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* CARDS DE MÉTRICAS */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .metric-card:hover { border-color: var(--green-dim); }
+
+    .metric-card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 60px; height: 60px;
+      background: radial-gradient(circle, var(--green-dim) 0%, transparent 70%);
+      border-radius: 0 12px 0 0;
+    }
+
+    .metric-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .metric-value {
+      font-size: 3rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--text);
+      transition: all 0.4s;
+    }
+
+    .metric-value.blue  { color: var(--blue); }
+    .metric-value.green { color: var(--green); }
+
+    /* TABELA */
+    .table-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table-header h2 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .refresh-tag {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: 0.75rem 1.5rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(0,230,118,0.03); }
+
+    tbody td {
+      padding: 1rem 1.5rem;
+      font-size: 0.875rem;
+      vertical-align: middle;
+    }
+
+    .td-name {
+      font-weight: 600;
+      color: var(--green);
+      white-space: nowrap;
+    }
+
+    .td-msg {
+      color: #8ea898;
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .td-time {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .td-client {
+      font-size: 0.72rem;
+      background: var(--green-dim);
+      color: var(--green);
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      padding: 3rem;
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    /* PAINEL POR CLIENTE */
+    .tenant-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .tenant-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .tenant-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+      color: var(--text);
+    }
+
+    .tenant-stats {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .tenant-stat span:first-child {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+      display: block;
+      text-transform: uppercase;
+    }
+
+    .tenant-stat span:last-child {
+      font-size: 1.4rem;
+      font-weight: 800;
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 2px;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Animação de entrada */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .metric-card, .table-wrapper, .tenant-card {
+      animation: fadeUp 0.4s ease both;
+    }
+
+    .metric-card:nth-child(2) { animation-delay: 0.05s; }
+    .metric-card:nth-child(3) { animation-delay: 0.10s; }
+  </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans">
-    <div class="container mx-auto px-4 py-10">
-        <header class="flex justify-between items-center mb-10 border-b border-gray-800 pb-5">
-            <h1 class="text-3xl font-bold text-green-400">UAI Oficial <span class="text-white text-sm font-light">| Dashboard</span></h1>
-            <div class="bg-gray-800 px-4 py-2 rounded-full text-xs font-mono">Status: <span class="text-green-500 underline">ONLINE</span></div>
-        </header>
+<body>
+  <div class="container">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                <p class="text-gray-400 text-sm uppercase font-semibold">Total de Leads</p>
-                <p id="totalLeads" class="text-5xl font-black mt-2">0</p>
-            </div>
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                <p class="text-gray-400 text-sm uppercase font-semibold">Mensagens</p>
-                <p id="totalMessages" class="text-5xl font-black mt-2 text-blue-400">0</p>
-            </div>
-        </div>
+    <header>
+      <div class="logo">
+        <h1>UAI Oficial</h1>
+        <span>Painel de Controle</span>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span id="lastUpdate">Conectando...</span>
+      </div>
+    </header>
 
-        <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
-            <div class="px-6 py-4 border-b border-gray-700 bg-gray-750">
-                <h2 class="font-bold text-lg">Últimas Interações</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="text-gray-400 border-b border-gray-700">
-                            <th class="px-6 py-4">Nome</th>
-                            <th class="px-6 py-4">Mensagem</th>
-                            <th class="px-6 py-4">Horário</th>
-                        </tr>
-                    </thead>
-                    <tbody id="messageList">
-                        <tr><td colspan="3" class="px-6 py-10 text-center text-gray-500 font-mono italic">Aguardando dados...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <!-- MÉTRICAS -->
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-label">Total de Leads</div>
+        <div class="metric-value green" id="totalLeads">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Mensagens Recebidas</div>
+        <div class="metric-value blue" id="totalMessages">—</div>
+      </div>
     </div>
 
-    <script>
-        async function loadDashboard() {
-            try {
-                const res = await fetch('/api/dashboard');
-                const data = await res.json();
-                
-                // O truque para converter o texto da API em número real
-                document.getElementById('totalLeads').innerText = data.totalLeads || 0;
-                document.getElementById('totalMessages').innerText = data.totalMessages || 0;
-                
-                const list = document.getElementById('messageList');
-                if (data.recentMessages && data.recentMessages.length > 0) {
-                    list.innerHTML = data.recentMessages.map(m => `
-                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 transition">
-                            <td class="px-6 py-4 font-medium text-green-400">${m.nome_eleitor}</td>
-                            <td class="px-6 py-4 text-gray-300">"${m.mensagem}"</td>
-                            <td class="px-6 py-4 text-sm text-gray-500 font-mono">${new Date(m.horario).toLocaleString('pt-BR')}</td>
-                        </tr>
-                    `).join('');
-                }
-            } catch (err) {
-                console.error("Erro ao carregar:", err);
-            }
+    <!-- POR CLIENTE -->
+    <div id="tenantSection" style="display:none">
+      <div class="metric-label" style="margin-bottom:0.75rem; letter-spacing:2px; font-family:'Space Mono',monospace; font-size:0.65rem; text-transform:uppercase; color:var(--muted)">Clientes Ativos</div>
+      <div class="tenant-grid" id="tenantGrid"></div>
+    </div>
+
+    <!-- TABELA DE INTERAÇÕES -->
+    <div class="table-wrapper">
+      <div class="table-header">
+        <h2>Últimas Interações</h2>
+        <span class="refresh-tag" id="refreshTag">ATUALIZA A CADA 10s</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Mensagem</th>
+              <th>Cliente</th>
+              <th>Horário</th>
+            </tr>
+          </thead>
+          <tbody id="messageList">
+            <tr>
+              <td colspan="4" class="empty-state">Aguardando dados...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer>UAI OFICIAL &nbsp;·&nbsp; SISTEMA DE LEADS POLÍTICOS &nbsp;·&nbsp; v2.0</footer>
+  </div>
+
+  <script>
+    async function loadDashboard() {
+      try {
+        const res  = await fetch('/api/dashboard');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // Métricas principais
+        document.getElementById('totalLeads').textContent    = data.totalLeads    ?? 0;
+        document.getElementById('totalMessages').textContent = data.totalMessages ?? 0;
+
+        // Timestamp de atualização
+        document.getElementById('lastUpdate').textContent =
+          'ONLINE · ' + new Date().toLocaleTimeString('pt-BR');
+
+        // Cards por cliente
+        if (data.byTenant && data.byTenant.length > 0) {
+          const section = document.getElementById('tenantSection');
+          const grid    = document.getElementById('tenantGrid');
+          section.style.display = 'block';
+          grid.innerHTML = data.byTenant.map(t => `
+            <div class="tenant-card">
+              <div class="tenant-name">${t.cliente}</div>
+              <div class="tenant-stats">
+                <div class="tenant-stat">
+                  <span>Leads</span>
+                  <span style="color:var(--green)">${t.total_leads}</span>
+                </div>
+                <div class="tenant-stat">
+                  <span>Msgs</span>
+                  <span style="color:var(--blue)">${t.total_mensagens}</span>
+                </div>
+              </div>
+            </div>
+          `).join('');
         }
-        loadDashboard();
-        setInterval(loadDashboard, 10000); // Atualiza a cada 10 segundos
-    </script>
+
+        // Tabela de mensagens
+        const list = document.getElementById('messageList');
+        if (data.recentMessages && data.recentMessages.length > 0) {
+          list.innerHTML = data.recentMessages.map(m => `
+            <tr>
+              <td class="td-name">${m.nome_eleitor}</td>
+              <td class="td-msg">${m.mensagem || '<em style="color:var(--muted)">sem texto</em>'}</td>
+              <td><span class="td-client">${m.cliente}</span></td>
+              <td class="td-time">${new Date(m.horario).toLocaleString('pt-BR')}</td>
+            </tr>
+          `).join('');
+        } else {
+          list.innerHTML = `<tr><td colspan="4" class="empty-state">Nenhuma mensagem ainda. Mande um Zap!</td></tr>`;
+        }
+
+      } catch (err) {
+        console.error('[DASHBOARD] Erro ao carregar:', err);
+        document.getElementById('lastUpdate').textContent = 'ERRO · ' + err.message;
+      }
+    }
+
+    // Carrega imediatamente e depois a cada 10s
+    loadDashboard();
+    setInterval(loadDashboard, 10000);
+  </script>
 </body>
 </html>
